@@ -8,7 +8,7 @@ This file is used to define headers.
 */
 
 // standard Ethernet header
-header_type ethernet_t {
+header_type ethernet_h {
     fields {
         dstAddr : 48;
         srcAddr : 48;
@@ -16,8 +16,21 @@ header_type ethernet_t {
     }
 }
 
-// INT headers
-header_type int_header_t {
+
+// intrinsic metadata header
+header_type intrinsic_metadata_h {
+    fields {
+        mcast_grp : 4;
+        egress_rid : 4;
+        mcast_hash : 16;
+        lf_field_list: 32;
+    }
+}
+
+
+
+// INT header
+header_type int_header_h {
     fields {
         ver                     : 2;   // define INT metadata header version.
         rep                     : 2;   // Replication requested.
@@ -27,15 +40,17 @@ header_type int_header_t {
                                        // 3: Port_ and Next_hop_level replication requested. 
         c                       : 1;   // Copy.
         e                       : 1;   // Max Hop Count exceeded
-        rsvd1                   : 5;
+        rsvd1                   : 5;   // Reserved 1
         ins_cnt                 : 5;   // Instruction Count
         max_hop_cnt             : 8;   // Max Hop Count
         total_hop_cnt           : 8;   // Total Hop Count
-        instruction_mask_0003   : 4;   // split the bits for lookup
-        instruction_mask_0407   : 4;
-        instruction_mask_0811   : 4;
-        instruction_mask_1215   : 4;
-        rsvd2                   : 16;
+        instruction_bitmask     : 5;   // Decide which metadata to add to packet
+        rsvd2                   : 16;  // Reserved 2
     }
 }
 
+// Headers initialization
+
+header   ethernet_h ethernet;
+metadata intrinsic_metadata_h intrinsic_metadata
+header   int_h INT;
