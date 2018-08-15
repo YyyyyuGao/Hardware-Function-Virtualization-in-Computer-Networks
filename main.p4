@@ -10,9 +10,39 @@ This process is continuously cycled, and the MAC address information of the enti
 
 
 */
+#include <headers.p4>
+#include <parser.p4>
+
+#define MAC_LEARN_RECEIVER 1024
+
+field_list mac_learn_digest {
+    ethernet_.srcAddr;
+    standard_metadata.ingress_port;
+}
+
+
+// Define actions
+action _drop() {
+    drop();
+}
+
+action _nop() {
+}
+
 action mac_learn() {
     generate_digest(MAC_LEARN_RECEIVER, mac_learn_digest);
 }
+
+action forward(port) {
+    modify_field(standard_metadata.egress_spec, port);
+}
+
+action broadcast() {
+    modify_field(intrinsic_metadata.mcast_grp, 1);
+}
+
+
+// Define tables
 
 table smac {
     reads {
@@ -28,5 +58,25 @@ table dmac {
     }
     actions {forward; broadcast;}
     size : 512;
+}
+
+table mcast_src_pruning {
+    reads {
+        standard_metadata.instance_type : exact;
+    }
+    actions {_nop; _drop;}
+    size : 1;
+}
+
+// Define control flow
+control ingress {
+    apply(smac);
+    apply(dmac);
+}
+
+control egress {
+    if(standard_metadata.ingress_port == standard_metadata.egress_port) {
+        apply(mcast_src_pruning);
+    }
 }
 
