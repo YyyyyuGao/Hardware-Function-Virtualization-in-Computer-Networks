@@ -2,7 +2,7 @@
 #include <sume_switch.p4>
 
 /******** CONSTANTS ********/
-#define IPV4_TYPE 0x0800
+#define INT_TYPE 0x1213
 
 /******** TYPES ********/
 typedef bit<48> EthAddr_t;
