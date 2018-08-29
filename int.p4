@@ -261,7 +261,16 @@ control TopPipe(inout Parsed_packet headers,
               sume_metadata.dst_port = port;
                                             } // action set output port
                                             
+        action set_broadcast(port_t port) {
+              sume_metadata.dst_port = port;
+                                          } // action set broadcast 
         
+        action send_to_control() {
+        digest_data.src_port = sume_metadata.src_port;
+        digest_data.eth_src_addr = 16w0 ++ headers.ethernet.srcAddr;
+        sume_metadata.send_dig_to_cpu = 1;
+                                 } // action send requirements to control-plane to add unknown src port       
+                                          
        table forward {
         key = { headers.ethernet.dstAddr: exact; }
 
@@ -272,15 +281,88 @@ control TopPipe(inout Parsed_packet headers,
         size = 64;
         default_action = NoAction;
                      } // table forward
-    
-                                                      
-                                                      
-                                                      
-                                                      
-                                                      
-                                                      
-                                                      
-                                                      
+  
+       table broadcast {
+         key = { sume_metadata.src_port: exact; }
+
+         actions = {
+            set_broadcast;
+            NoAction;
+                   }
+        size = 64;
+        default_action = NoAction;
+                       }   // table broadcast                                          
+                                                                                                       
+       table smac {
+        key = { headers.ethernet.srcAddr: exact; }
+
+        actions = {
+            NoAction;
+                  }
+        size = 64;
+        default_action = NoAction;
+                  }    // table check source mac address
+                  
+        setBosPipe() setBosPipe_inst;    // apply set bos bits pipe
+        
+       
+        apply {
+
+        forward.apply();
+                // try to forward based on destination Ethernet address
+        if (!forward.apply().hit) {
+            // miss in forwarding table
+            broadcast.apply();
+        }
+
+        // check if src Ethernet address is in the forwarding database
+        if (!smac.apply().hit) {
+            // unknown source MAC address
+            send_to_control();
+        }
+              
+              if (p.INT.isValid()) {
+            if (p.INT.total_hop_cnt >= p.INT.max_hop_cnt) {
+                // INT data cannot be inserted
+                p.INT.e = 1;
+                                                           } 
+            else{
+                // fill INT header fields
+                p.int_egress_port_id.egress_port_id = 23w0++sume_metadata.dst_port;
+                tin_timestamp(1w1, p.int_ingress_tstamp.ingress_tstamp);
+                p.int_ingress_port_id.ingress_port_id = 23w0++sume_metadata.src_port;
+
+                // write output queue size
+                if (sume_metadata.dst_port == 8w0b0000_0001) {
+                    p.int_q_occupancy.q_occupancy = 15w0++sume_metadata.nf0_q_size;
+                } else if (sume_metadata.dst_port == 8w0b0000_0100) {
+                    p.int_q_occupancy.q_occupancy = 15w0++sume_metadata.nf1_q_size;
+                } else if (sume_metadata.dst_port == 8w0b0001_0000) {
+                    p.int_q_occupancy.q_occupancy = 15w0++sume_metadata.nf2_q_size;
+                } else if (sume_metadata.dst_port == 8w0b0100_0000) {
+                    p.int_q_occupancy.q_occupancy = 15w0++sume_metadata.nf3_q_size;
+                } else {
+                    p.int_q_occupancy.q_occupancy = 31w0x7FFF_FFFF; // special value meaning not currently available
+                }
+ 
+                bit<31> newVal = 0; // not used
+                bit<8> opCode = REG_READ;
+                bit<31> switchID;
+                switchID_reg_rw(0, newVal, opCode, switchID);
+                p.int_switch_id.switch_id = switchID;
+
+                // Set the bos bits for each field
+                setBosPipe_inst.apply(p, user_metadata, digest_data, sume_metadata);
+
+                // increment total_hop_cnt
+                p.INT.total_hop_cnt = p.INT.total_hop_cnt + 1;
+
+            } // end of else
+
+                                   } // end of if -INT
+              
+              } // end of apply
+
                                                       } // control TopPipe
 
 
