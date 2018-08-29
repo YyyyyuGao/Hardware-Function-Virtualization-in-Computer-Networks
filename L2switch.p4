@@ -59,13 +59,20 @@ parser TopParser(packet_in b,
                  out user_metadata_t user_metadata,
                  out digest_data_t digest_data,
                  inout sume_metadata_t sume_metadata) {
-    state start {
-        b.extract(p.ethernet);
+                 
+       state start {
+          transition parse_ethernet;
+              }
+
+       state parse_ethernet {
+          
+                 
+          b.extract(p.ethernet);
        
        
         transition accept;
     }
-}
+                                                      }
 
 //////////////////////////////////////////////////////////////////////
 // match-action pipeline
