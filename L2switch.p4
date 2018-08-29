@@ -16,7 +16,7 @@ header Ethernet_h {
 }
 
 
-
+////////////////////////////////////////   how to modify??????????
 header_type intrinsic_metadata_h {
     fields {
         mcast_grp : 4;
@@ -26,7 +26,21 @@ header_type intrinsic_metadata_h {
     }
 }
 
+// digest data to send to cpu if desired
+// sume_metadata.send_dig_to_cpu set up to 1
+// must be 256 bits
 
+struct digest_data_t {
+    bit<184> unused;
+    bit<64> eth_src_addr;  // 64 bits so we can use the LELongField type for scapy
+    port_t src_port;
+}
+
+// user defined metadata: can be used to share information between
+// TopParser, TopPipe, and TopDeparser 
+struct user_metadata_t {
+    bit<8>  unused;
+}
 
 
 
