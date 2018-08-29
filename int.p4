@@ -293,7 +293,7 @@ control TopPipe(inout Parsed_packet headers,
         default_action = NoAction;
                        }   // table broadcast                                          
                                                                                                        
-       table smac {
+       table Check_src_mac {
         key = { headers.ethernet.srcAddr: exact; }
 
         actions = {
@@ -316,7 +316,7 @@ control TopPipe(inout Parsed_packet headers,
         }
 
         // check if src Ethernet address is in the forwarding database
-        if (!smac.apply().hit) {
+        if (!Check_src_mac.apply().hit) {
             // unknown source MAC address
             send_to_control();
         }
