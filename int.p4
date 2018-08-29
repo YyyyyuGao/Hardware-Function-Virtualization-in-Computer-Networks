@@ -135,7 +135,8 @@ struct Parsed_packet {
 //////////////////////////////////////////parser implementation
 //////////////////////////////////////////////////////////////////
 
-@Xilinx_MaxPacketRegion(8192)
+@Xilinx_MaxPacketRegion(16384)   // declares the largest packet size (in bits) to support
+
 
 parser TopParser(packet_in b, 
                  out Parsed_packet p, 
@@ -153,7 +154,7 @@ parser TopParser(packet_in b,
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////deparser implementation
 //////////////////////////////////////////////////////////////////
-@Xilinx_MaxPacketRegion(8192)
+@Xilinx_MaxPacketRegion(16384)
 control TopDeparser(packet_out b,
                     in Parsed_packet p,
                     in user_metadata_t user_metadata,
