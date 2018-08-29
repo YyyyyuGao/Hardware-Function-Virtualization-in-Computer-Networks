@@ -54,7 +54,7 @@ struct Parsed_packet {
 /////////////////////////////////////////////////////////////////////
 
 @Xilinx_MaxPacketRegion(16384)
-parser TopParser(packet_in b, 
+parser TopParser(packet_in packet, 
                  out Parsed_packet p, 
                  out user_metadata_t user_metadata,
                  out digest_data_t digest_data,
@@ -67,7 +67,7 @@ parser TopParser(packet_in b,
        state parse_ethernet {
           
                  
-          b.extract(p.ethernet);
+          packet.extract(p.ethernet);
        
        
         transition accept;
@@ -158,13 +158,13 @@ control egress {
 // Deparser Implementation
 /////////////////////////////////////////////////////////////////////
 @Xilinx_MaxPacketRegion(16384)
-control TopDeparser(packet_out b,
+control TopDeparser(packet_out packet,
                     in Parsed_packet p,
                     in user_metadata_t user_metadata,
                     inout digest_data_t digest_data,
                     inout sume_metadata_t sume_metadata) { 
     apply {
-        b.emit(p.ethernet); 
+        packet.emit(p.ethernet); 
     }
 }
 
