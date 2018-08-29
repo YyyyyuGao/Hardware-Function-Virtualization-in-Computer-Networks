@@ -144,16 +144,152 @@ parser TopParser(packet_in b,
                  out digest_data_t digest_data,
                  inout sume_metadata_t sume_metadata) {
                 
-                
-                                                      }// TopParser
-                                                      
+        state start {
+                           b.extract(p.ethernet);
+                             digest_data.unused = 0;                         
+                             digest_data.src_port = 0;
+                             digest_data.eth_src_addr = 0;
+                             user_metadata.unused = 0;
+                             
+                           transition select(p.ethernet.etherType) {
 
+                                       0x1213: parse_int;
+                                       default: reject;            
+                                                              }
+                    } // state start
+              
+        state parse_int {
+                           b.extract(p.INT);
+                           transition accept;
+                        } // state parse_int
+        
+        
+                                                      } // TopParser
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////match-action pipeline
+//////////////////////////////////////////////////////////////////                                                      
+
+/*
+
+|  Ethernet  |  INT  |  INT_metadata  |  INT_metadata  |  payload  |
+|            |       |    bos:0       |    bos:1       |           |
+                     ^ 
+                     |
+            New data inserted here
+
+*/
+
+control setBosPipe(inout Parsed_packet p,
+                   inout user_metadata_t user_metadata,
+                   inout digest_data_t digest_data,
+                   inout sume_metadata_t sume_metadata) {
+
+    apply {
+        // set bos bits
+
+        bit<5> headers_pushed_cnt = 0;
+        if ((p.INT.instruction_bitmask & SWITCH_ID_MASK) >> SWITCH_ID_POS == 1) {
+            headers_pushed_cnt = headers_pushed_cnt + 1;
+            if (p.INT.total_hop_cnt == 0 && headers_pushed_cnt == p.INT.ins_cnt) {
+                // last INT header in stack
+                p.int_switch_id.bos = 1;
+            } else {
+                p.int_switch_id.bos = 0;
+            }
+            p.int_switch_id.setValid();
+            sume_metadata.pkt_len = sume_metadata.pkt_len + INT_DATA_SIZE;
+        }
+
+        if ((p.INT.instruction_bitmask & INGRESS_PORT_ID_MASK) >> INGRESS_PORT_ID_POS == 1) {
+            headers_pushed_cnt = headers_pushed_cnt + 1;
+            if (p.INT.total_hop_cnt == 0 && headers_pushed_cnt == p.INT.ins_cnt) {
+                // last INT header in stack
+                p.int_ingress_port_id.bos = 1;
+            } else {
+                p.int_ingress_port_id.bos = 0;
+            }
+            p.int_ingress_port_id.setValid();
+            sume_metadata.pkt_len = sume_metadata.pkt_len + INT_DATA_SIZE;
+        }
+
+        if ((p.INT.instruction_bitmask & Q_OCCUPANCY_MASK) >> Q_OCCUPANCY_POS == 1) {
+            headers_pushed_cnt = headers_pushed_cnt + 1;
+            if (p.INT.total_hop_cnt == 0 && headers_pushed_cnt == p.INT.ins_cnt) {
+                // last INT header in stack
+                p.int_q_occupancy.bos = 1;
+            } else {
+                p.int_q_occupancy.bos = 0;
+            }
+            p.int_q_occupancy.setValid();
+            sume_metadata.pkt_len = sume_metadata.pkt_len + INT_DATA_SIZE;
+        }
+
+        if ((p.INT.instruction_bitmask & INGRESS_TSTAMP_MASK) >> INGRESS_TSTAMP_POS == 1) {
+            headers_pushed_cnt = headers_pushed_cnt + 1;
+            if (p.INT.total_hop_cnt == 0 && headers_pushed_cnt == p.INT.ins_cnt) {
+                // last INT header in stack
+                p.int_ingress_tstamp.bos = 1;
+            } else {
+                p.int_ingress_tstamp.bos = 0;
+            }
+            p.int_ingress_tstamp.setValid();
+            sume_metadata.pkt_len = sume_metadata.pkt_len + INT_DATA_SIZE;
+        }
+
+        if ((p.INT.instruction_bitmask & EGRESS_PORT_ID_MASK) >> EGRESS_PORT_ID_POS == 1) {
+            headers_pushed_cnt = headers_pushed_cnt + 1;
+            if (p.INT.total_hop_cnt == 0 && headers_pushed_cnt == p.INT.ins_cnt) {
+                // last INT header in stack
+                p.int_egress_port_id.bos = 1;
+            } else {
+                p.int_egress_port_id.bos = 0;
+            }
+            p.int_egress_port_id.setValid();
+            sume_metadata.pkt_len = sume_metadata.pkt_len + INT_DATA_SIZE;
+        }
+
+    }
+} // control set bos bits
+
+
+control TopPipe(inout Parsed_packet headers,
+                inout user_metadata_t user_metadata, 
+                inout digest_data_t digest_data, 
+                inout sume_metadata_t sume_metadata) {
+                                                      
+        action set_output_port(port_t port) {
+              sume_metadata.dst_port = port;
+                                            } // action set output port
+                                            
+        
+       table forward {
+        key = { headers.ethernet.dstAddr: exact; }
+
+        actions = {
+            set_output_port;
+            NoAction;
+                   }
+        size = 64;
+        default_action = NoAction;
+                     } // table forward
+    
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      } // control TopPipe
 
 
 
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////deparser implementation
 //////////////////////////////////////////////////////////////////
+
+
 @Xilinx_MaxPacketRegion(16384)
 control TopDeparser(packet_out b,
                     in Parsed_packet p,
@@ -170,16 +306,11 @@ control TopDeparser(packet_out b,
         b.emit(p.int_ingress_tstamp);
         b.emit(p.int_egress_port_id);
     }
-}
+                                                        } // TopDeparser
 
 
 
 // Instantiate the switch
 SimpleSumeSwitch(TopParser(), TopPipe(), TopDeparser()) main;
-
-
-
-
-
 
 
