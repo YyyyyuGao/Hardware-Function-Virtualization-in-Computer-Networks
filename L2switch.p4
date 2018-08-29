@@ -2,12 +2,9 @@
 #include <sume_switch.p4>
 
 
-
-
 #define MAC_LEARN_RECEIVER 1024
 
 typedef bit<48> EthernetAddress; 
-
 
 
 
@@ -17,7 +14,6 @@ header Ethernet_h {
     EthernetAddress srcAddr; 
     bit<16> etherType;
 }
-
 
 
 
@@ -66,6 +62,10 @@ control TopPipe(inout Parsed_packet headers,
                 inout digest_data_t digest_data, 
                 inout sume_metadata_t sume_metadata) {
 
+apply {   smac.apply();  
+          dmac.apply();
+
+      }
 
     
                                                     }
@@ -83,7 +83,6 @@ control TopPipe(inout Parsed_packet headers,
     }
     
 
-
 table smac {
     key = {headers.ethernet_.srcAddr : exact;  }
     actions = {
@@ -94,15 +93,6 @@ table smac {
     default_action = NoAction;
             }               
 
-
-
-table dmac {
-    reads {
-        ethernet_.dstAddr : exact;
-    }
-    actions {forward; broadcast;}
-    size : 512;
-}
 
 table mcast_src_pruning {
     reads {
@@ -134,13 +124,9 @@ action broadcast() {
 }
 
 
-control ingress {
-    apply(smac);
-    apply(dmac);
-}
 
 control egress {
-    if(standard_metadata.ingress_port == standard_metadata.egress_port) {
+    if(sume_metadata.src_port == sume_metadata.src_port) {
         apply(mcast_src_pruning);
     }
 }
