@@ -109,9 +109,12 @@ header int_q_occupancy_h {
 // must be 256 bits
 
 struct digest_data_t {
-    bit<184> unused;
-    bit<64>  eth_src_addr;  
+   
+    bit<64>  eth_src_addr;
+    bit<64>  eth_dst_addr;
     port_t   src_port;
+    port_t   dst_prot;
+    bit<112> unused;
 }
 
 // user defined metadata: can be used to shared information between
@@ -263,9 +266,12 @@ control TopPipe(inout Parsed_packet headers,
                                             
         action set_broadcast(port_t port) {
               sume_metadata.dst_port = port;
-                                          } // action set broadcast 
+              digest_data.dst_port = sume_metadata.dst_port;
+              digest_data.eth_dst_addr = 16w0 ++ headers.ethernet.dstAddr;
+              sume_metadata.send_dig_to_cpu = 1;
+                                          } // action set broadcast and add dstAddr to address table in the control plane
         
-        action send_to_control() {
+        action send_to_control_src() {
         digest_data.src_port = sume_metadata.src_port;
         digest_data.eth_src_addr = 16w0 ++ headers.ethernet.srcAddr;
         sume_metadata.send_dig_to_cpu = 1;
@@ -318,7 +324,7 @@ control TopPipe(inout Parsed_packet headers,
         // check if src Ethernet address is in the forwarding database
         if (!Check_src_mac.apply().hit) {
             // unknown source MAC address
-            send_to_control();
+            send_to_control_src();
         }
               
               if (p.INT.isValid()) {
