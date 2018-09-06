@@ -334,9 +334,10 @@ control TopPipe(inout Parsed_packet headers,
                                                            } 
             else{
                 // fill INT header fields
+                               
+                p.int_ingress_port_id.ingress_port_id = 23w0++sume_metadata.src_port;
                 p.int_egress_port_id.egress_port_id = 23w0++sume_metadata.dst_port;
                 tin_timestamp(1w1, p.int_ingress_tstamp.ingress_tstamp);
-                p.int_ingress_port_id.ingress_port_id = 23w0++sume_metadata.src_port;
 
                 // write output queue size
                 if (sume_metadata.dst_port == 8w0b0000_0001) {
